@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: gym-tictactoe
+Version: 0.0.1
+Summary: Light TicTacToe OpenAi Gym environment
+Home-page: https://github.com/ClementRomac/gym-tictactoe
+Author: Clement Romac
+Author-email: clement.romac@gmail.com
+License: MIT License
+Description: UNKNOWN
+Platform: UNKNOWN
