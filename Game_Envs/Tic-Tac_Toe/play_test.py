@@ -41,8 +41,7 @@ def td_vi_init(envs,load):
         return td_vi.TD_VI(envs.get_attr("total_states", indices = 0), priori)#envs.get_attr("total_states"),priori)
 
 def run_episode(p1_control, p2_control, rl_model, envs, done, train, greedy, cpu, lock, episode):
-    print("ok")
-    #lock.acquire()
+    lock.acquire()
     index = episode % cpu
     state, mask = envs.env_method("reset", indices = index)
     while not done:
@@ -93,7 +92,7 @@ def run_episode(p1_control, p2_control, rl_model, envs, done, train, greedy, cpu
                 rl_model.increment_episode()
                 if train:
                     rl_model.save_val_table()
-    #lock.release()
+    lock.release()
 
 def play(envs, cpu, p1_control='td_vi',p2_control='td_vi',episodes=5000,train=True,load=False):
     '''
@@ -125,9 +124,9 @@ def play(envs, cpu, p1_control='td_vi',p2_control='td_vi',episodes=5000,train=Tr
     done = False
     func = partial(run_episode, p1_control = p1_control, p2_control = p2_control, rl_model = rl_model, 
         envs = envs, done = done, train = train, greedy = greedy, cpu = cpu, lock = lock)
-    print(pool.imap(func, range(episodes)))
-    #pool.close
-    #pool.join
+    pool.map(func, range(episodes))
+    pool.close
+    pool.join
     
 
 
