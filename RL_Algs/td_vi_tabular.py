@@ -31,7 +31,7 @@ class TD_VI:
         for val in priori_vals:
             self.vals[val[0]] = val[1]
 
-    def choose_act(self,state,transitions,greedy):
+    def choose_act(self,state,transitions,greedy,lock):
         '''a transition is a list of the form [[player_action (int), new_state (int)], [new_new_state_1 (int)],...,new_new_state_N (int)]]
         transitions is the list of all valid transitions from the given state, and new new states from all valid opponent actions from the new state
         if new_state is a terminal state, the opponent list should be an empty list'''
@@ -45,7 +45,7 @@ class TD_VI:
         else:
             #decide action based on the maximum Q-value of each legal action
             if state < self.P2_IDX:
-                temp_vals = self.vals #value table is stored such that +1 is a player 1 win and -1 is a player 2 win.
+                temp_vals = self.vals #value table is stored such that +1 is a player 1 win and -1 is a player 2 win. 
             else:
                 temp_vals = [-1*v for v in self.vals] #need to invert values to select actions for player 2.
 
@@ -75,9 +75,11 @@ class TD_VI:
                 self.update_value(state,new_state) #update the value of state based on the value of new_state
         return chosen_act
 
-    def update_value(self,state,new_state):
+    def update_value(self,state,new_state,lock):
         #updates the value function of the state and transition state according to the temporal difference update rule
+        lock.acquire()
         self.vals[state] += self.alpha*(self.vals[new_state] - self.vals[state])
+        lock.release()
 
     def increment_episode(self):
         self.episode += 1
