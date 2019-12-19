@@ -3,6 +3,8 @@ import gym_tictactoe
 import random
 import os,sys
 import numpy as np
+import warnings
+warnings.filterwarnings('ignore')
 sys.path.append('../../RL_Algs')
 import td_vi_tabular as td_vi
 import pickle
@@ -40,8 +42,13 @@ def td_vi_init(envs,load):
                 priori.append([i,-1])
         return td_vi.TD_VI(envs.get_attr("total_states", indices = 0), priori)#envs.get_attr("total_states"),priori)
 
-def run_episode(p1_control, p2_control, rl_model, envs, done, train, greedy, cpu, lock, episode):
-    lock.acquire()
+
+def run_episode(episode,p1_control, p2_control, rl_model,train, greedy, cpu):
+    #Let's try having each thread making its own environemnt.
+    env = gym.make('TicTacToe-v1')  
+    env.init(symbols=[1, 2]) # Define users symbols
+
+    done = False
     index = episode % cpu
     state, mask = envs.env_method("reset", indices = index)
     while not done:
@@ -92,9 +99,10 @@ def run_episode(p1_control, p2_control, rl_model, envs, done, train, greedy, cpu
                 rl_model.increment_episode()
                 if train:
                     rl_model.save_val_table()
-    lock.release()
 
-def play(envs, cpu, p1_control='td_vi',p2_control='td_vi',episodes=5000,train=True,load=False):
+
+
+def play(envs, cpu, p1_control='td_vi',p2_control='td_vi',episodes=10000,train=True,load=False):
     '''
     Runs the simulated games of Tic-Tac-Toe.
 
@@ -114,23 +122,18 @@ def play(envs, cpu, p1_control='td_vi',p2_control='td_vi',episodes=5000,train=Tr
         If False (default): initialize the value table from scratch.
     '''
     greedy = not train
-
     if p1_control == 'td_vi' or p2_control == 'td_vi':
         rl_model = td_vi_init(envs, load)
     
     #thread job: episode function, uses an environment instance that isn't been used.
-    lock = mp.Lock()
-    pool = mp.Pool(cpu)
-    done = False
-    func = partial(run_episode, p1_control = p1_control, p2_control = p2_control, rl_model = rl_model, 
-        envs = envs, done = done, train = train, greedy = greedy, cpu = cpu, lock = lock)
+    #l = mp.Lock()
+    pool = mp.Pool(processes=cpu)
+    func = partial(run_episode, p1_control = p1_control, p2_control = p2_control, rl_model = rl_model, train = train, 
+        greedy = greedy, cpu = cpu)
     pool.map(func, range(episodes))
-    pool.close
-    pool.join
+    pool.close()
+    pool.join()
     
-
-
-
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
@@ -157,8 +160,8 @@ if __name__ == "__main__":
 
 
     cpu = mp.cpu_count() - 1
-    envs = [lambda: gym.make('TicTacToe-v1') for _ in range(cpu)]
+    # envs = [lambda: gym.make('TicTacToe-v1') for _ in range(cpu)]
     
-    envs = SubprocVecEnv(envs)
-    envs.env_method("init", symbols = [1,2])
+    # envs = SubprocVecEnv(envs)
+    # envs.env_method("init", symbols = [1,2])
     play(envs, cpu, p1_control=args.p1_control,p2_control=args.p2_control,episodes=args.episodes,train=train,load=load)
