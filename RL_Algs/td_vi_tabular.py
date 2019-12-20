@@ -64,7 +64,7 @@ class TD_VI:
                     Q_vals.append(min_Q)
                     if(greedy == False):
                         new_new_state = min_state
-                        self.update_value(new_state,new_new_state) #update the value of new_state based on the value of new_new_state
+                        self.update_value(new_state,new_new_state, lock) #update the value of new_state based on the value of new_new_state
 
             max_Q = max(Q_vals) #select the max of the Q_vals calculated in the previous for loop, which will tell us which action to select.
             best_transitions = [i for i,j in enumerate(Q_vals) if j == max_Q] #if there is a tie between multiple actions, randomly choose one of them
@@ -72,7 +72,7 @@ class TD_VI:
             chosen_act = transitions[chosen_t][0][0] 
             new_state = transitions[chosen_t][0][1]
             if(greedy == False):
-                self.update_value(state,new_state) #update the value of state based on the value of new_state
+                self.update_value(state,new_state, lock) #update the value of state based on the value of new_state
         return chosen_act
 
     def update_value(self,state,new_state,lock):

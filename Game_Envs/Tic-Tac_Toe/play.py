@@ -70,6 +70,8 @@ def play(p1_control='td_vi',p2_control='td_vi',episodes=5000,train=True,load=Fal
     for episode in range(0,episodes):
         # Reset the env before playing
         state, mask = env.reset()
+        if episode == 0:
+            print(state, mask)
         while not done:
           player = state[0]
           if(train == False):

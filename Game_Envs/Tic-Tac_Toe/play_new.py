@@ -38,7 +38,7 @@ def td_vi_init(env,load):
                 priori.append([i,-1])
         return td_vi.TD_VI(env.total_states,priori)
 
-def run_episode(p1_control, p2_control, rl_model, env, done, train, greedy, episode):
+def run_episode(p1_control, p2_control, rl_model, env, done, train, greedy, episode, cpu):
         # Reset the env before playing
     #lock.acquire()
     state, mask = env.reset()
