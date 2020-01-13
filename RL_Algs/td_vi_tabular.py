@@ -1,43 +1,32 @@
 import numpy as np
 import random
 import pickle
+import multiprocessing as mp
 
-class TD_VI: 
+class TD_VI(object): 
     #Implements an instance of tabular Temporal Difference Value Iteration (TDVI).
 
-    def __init__(self,total_states,priori_vals,alpha=0.3,epsilon=0.9,episode=0):
+    def __init__(self,alpha=0.3,epsilon=0.9):
         '''
         Attributes
         -----------
-        total_states : int
-            the total number of possible states in the environment
-        priori_vals : list
-            A list of states in which the value is know a priori, such as win condition states, or when loading a saved value table from a file.
-            Elements of priori_vals should have the format [state_index (int), value (float)].
         alpha : float
             The learning rate of the TD learning. Controls how much to change our previous value estimate in light of new data (default 0.3).
         epsilon : float
             The probability that a random action is chosen instead of a greedy action. This value decays over the course of training (default 0.9).
         '''
-
+        #self.count = 0
         self.P2_IDX = 8954 #index at which states correspond to player 2's turn.
-        self.total_states = total_states
-        self.vals = np.zeros(self.total_states)
         self.alpha = alpha
-        self.episode = episode
-        self.epsilon = epsilon*pow(0.999,episode) #if episode > 0, account for epsilon decay
+        self.epsilon = epsilon
 
-        #initializes the value table from the a priori values passed in.
-        for val in priori_vals:
-            self.vals[val[0]] = val[1]
-
-    def choose_act(self,state,transitions,greedy,lock):
+    def choose_act(self,vals,state,transitions,greedy,episode,lock):
         '''a transition is a list of the form [[player_action (int), new_state (int)], [new_new_state_1 (int)],...,new_new_state_N (int)]]
         transitions is the list of all valid transitions from the given state, and new new states from all valid opponent actions from the new state
         if new_state is a terminal state, the opponent list should be an empty list'''
-
+        ep = self.epsilon*pow(0.999,episode)
         rand = random.uniform(0,1)
-        if rand < self.epsilon and greedy == False:
+        if rand < ep and greedy == False:
             #randomly sample from legal actions
             chosen_transition = random.sample(transitions,1)[0]
             chosen_act = chosen_transition[0][0]
@@ -45,9 +34,9 @@ class TD_VI:
         else:
             #decide action based on the maximum Q-value of each legal action
             if state < self.P2_IDX:
-                temp_vals = self.vals #value table is stored such that +1 is a player 1 win and -1 is a player 2 win. 
+                temp_vals = vals #value table is stored such that +1 is a player 1 win and -1 is a player 2 win. 
             else:
-                temp_vals = [-1*v for v in self.vals] #need to invert values to select actions for player 2.
+                temp_vals = [-1*v for v in vals] #need to invert values to select actions for player 2.
 
             Q_vals = [] #Q_val corresponding to each action in transitons
             for transition in transitions:
@@ -64,7 +53,7 @@ class TD_VI:
                     Q_vals.append(min_Q)
                     if(greedy == False):
                         new_new_state = min_state
-                        self.update_value(new_state,new_new_state, lock) #update the value of new_state based on the value of new_new_state
+                        self.update_value(vals,new_state,new_new_state,lock) #update the value of new_state based on the value of new_new_state
 
             max_Q = max(Q_vals) #select the max of the Q_vals calculated in the previous for loop, which will tell us which action to select.
             best_transitions = [i for i,j in enumerate(Q_vals) if j == max_Q] #if there is a tie between multiple actions, randomly choose one of them
@@ -72,23 +61,20 @@ class TD_VI:
             chosen_act = transitions[chosen_t][0][0] 
             new_state = transitions[chosen_t][0][1]
             if(greedy == False):
-                self.update_value(state,new_state, lock) #update the value of state based on the value of new_state
+                self.update_value(vals,state,new_state,lock) #update the value of state based on the value of new_state
         return chosen_act
 
-    def update_value(self,state,new_state,lock):
+    def update_value(self,vals,state,new_state,lock):
         #updates the value function of the state and transition state according to the temporal difference update rule
         lock.acquire()
-        self.vals[state] += self.alpha*(self.vals[new_state] - self.vals[state])
+        vals[state] += self.alpha*(vals[new_state] - vals[state])
         lock.release()
 
-    def increment_episode(self):
-        self.episode += 1
-        self.epsilon *= 0.999 #decay the probability of selecting a random action when calling choose_act
-
-    def save_val_table(self):
+    def save_val_table(self,vals,episode):
         #saves the value table for a particular player_action
+        save_vals = [val for val in vals]
         pickle_file = './saved_models/saved_vals.pkl'
-        pickle.dump([self.episode,self.vals.tolist()],open(pickle_file,"wb"))
+        pickle.dump([episode,save_vals],open(pickle_file,"wb"))
 
-    def get_state_val(self,state_idx):
-        return self.vals[state_idx]
+    def get_state_val(self,vals,state_idx):
+        return vals[state_idx]
