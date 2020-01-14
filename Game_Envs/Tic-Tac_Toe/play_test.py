@@ -24,8 +24,7 @@ def masked_random_sample(mask):
     action = random.sample(valid_acts,1)[0]
     return action
 
-def get_priori_vals(envs,load):
-    env = envs[0]
+def get_priori_vals(env,load):
     priori = []
     if load:
         episode, priori_vals = pickle.load(open('saved_models/saved_vals.pkl',"rb"))
@@ -43,19 +42,9 @@ def get_priori_vals(envs,load):
                 priori.append([i,-1])
     return priori,episode
 
-def run_episode(p1_control, p2_control,rl_model, envs, done, train, greedy,iterable):
+def run_episode(p1_control, p2_control,rl_model, env, done, train, greedy,iterable):
     #get the first available environment from the envs list
-    occ_lock.acquire()
-    for i in range(len(occupied)):
-        if occupied[i] == 0:
-            occupied[i] = 1
-            env_index = i
-            break
-    occ_lock.release()
-
-    env = envs[env_index]
     state, mask = env.reset()
-
     #get the ordered episode value and increment it for the next thread
     ep_lock.acquire()
     ep = episode.value
@@ -111,14 +100,7 @@ def run_episode(p1_control, p2_control,rl_model, envs, done, train, greedy,itera
                 if train:
                     rl_model.save_val_table(vals,ep)
 
-            #free this environment to be used by another thread
-            occ_lock.acquire()
-            occupied[env_index] = 0
-            occ_lock.release()
-
-def init(occ,ol,vals,vl,episode,el):
-    global occ_lock
-    occ_lock = ol
+def init(vals,vl,episode,el):
     global ep_lock
     ep_lock = el
     global val_lock
@@ -149,13 +131,12 @@ def play(p1_control='td_vi',p2_control='td_vi',episodes=5000,train=True,load=Fal
     else:
         cpu = 1
 
-    envs = [gym.make('TicTacToe-v1') for _ in range(cpu)]
-    for env in envs: 
-        env.init(symbols = [1,2])
+    env = gym.make('TicTacToe-v1')
+    env.init(symbols = [1,2])
 
     global vals
-    vals = mp.Array('d',envs[0].total_states,lock=False)
-    priori_vals, start_episode = get_priori_vals(envs,load)
+    vals = mp.Array('d',env.total_states,lock=False)
+    priori_vals, start_episode = get_priori_vals(env,load)
 
     if train:
         iterable = range(start_episode,episodes)
@@ -170,18 +151,15 @@ def play(p1_control='td_vi',p2_control='td_vi',episodes=5000,train=True,load=Fal
     if p1_control == 'td_vi' or p2_control == 'td_vi':
         rl_model = td_vi.TD_VI()#rl_model = td_vi_init(envs, load)
 
-    global occupied
-    occupied = mp.Array('i',len(envs),lock=False)
-    ol = mp.Lock()
     global episode
     episode = mp.Value('i',start_episode)
     el = mp.Lock()
     vl = mp.Lock()
     t = TicToc()
     t.tic()
-    pool = mp.Pool(cpu, initializer=init, initargs =(occupied,ol,vals,vl,episode,el,))
+    pool = mp.Pool(cpu, initializer=init, initargs =(vals,vl,episode,el,))
     done = False
-    func = partial(run_episode, p1_control, p2_control, rl_model, envs, done, train, greedy)
+    func = partial(run_episode, p1_control, p2_control, rl_model, env, done, train, greedy)
     pool.map(func, iterable)
     pool.close()
     pool.join()
