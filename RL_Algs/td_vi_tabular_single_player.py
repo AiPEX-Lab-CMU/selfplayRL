@@ -6,7 +6,7 @@ import multiprocessing as mp
 class TD_VI(object): 
     #Implements an instance of tabular Temporal Difference Value Iteration (TDVI).
 
-    def __init__(self,alpha=0.3,epsilon=0.9):
+    def __init__(self,alpha=0.3,epsilon=0.9,gamma=0.9):
         '''
         Attributes
         -----------
@@ -17,6 +17,7 @@ class TD_VI(object):
         '''
         self.alpha = alpha
         self.epsilon = epsilon
+        self.gamma = gamma
 
     def choose_act(self,vals,state,transitions,greedy,episode,lock):
         '''a transition is a list of tuples of the form [player_action (int), new_state (int)]'''

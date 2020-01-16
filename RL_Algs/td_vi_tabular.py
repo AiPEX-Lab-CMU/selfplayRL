@@ -6,7 +6,7 @@ import multiprocessing as mp
 class TD_VI(object): 
     #Implements an instance of tabular Temporal Difference Value Iteration (TDVI).
 
-    def __init__(self,alpha=0.3,epsilon=0.9):
+    def __init__(self,alpha=0.3,epsilon=0.9,gamma=1):
         '''
         Attributes
         -----------
@@ -19,6 +19,7 @@ class TD_VI(object):
         self.P2_IDX = 8954 #index at which states correspond to player 2's turn.
         self.alpha = alpha
         self.epsilon = epsilon
+        self.gamma = gamma
 
     def choose_act(self,vals,state,transitions,greedy,episode,lock):
         '''a transition is a list of the form [[player_action (int), new_state (int)], [new_new_state_1 (int)],...,new_new_state_N (int)]]
@@ -46,7 +47,7 @@ class TD_VI(object):
                 else: #we need to get the value based on the opponents worst-case move selection from the new state
                     min_Q = float('inf') 
                     for new_new_state in transition[1]: #this for loop finds the min Q-value of our opponents state transitions (worst-case opponent move)
-                        Q_val = temp_vals[new_new_state]
+                        Q_val = self.gamma*temp_vals[new_new_state]
                         if(Q_val < min_Q):
                             min_Q = Q_val
                             min_state = new_new_state
