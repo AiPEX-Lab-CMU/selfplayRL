@@ -58,7 +58,7 @@ def generate_random_map(size=8, p=0.8):
 
     return ["".join(x) for x in res]
 
-def random_goal(goals, prob):
+def randomizer(goals, prob):
     num = random.random()
     length = len(goals)
     accum = 0
@@ -106,7 +106,7 @@ class BasicGameEnv(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, desc=None, map_name="2x5", prob = [0.4, 0.6]):
+    def __init__(self, desc=None, map_name="2x5", prob = [0.4, 0.6], agent = "random"):
         if desc is None and map_name is None:
             desc = generate_random_map()
         elif desc is None:
@@ -116,28 +116,55 @@ class BasicGameEnv(discrete.DiscreteEnv):
         self.desc = self.true_map
         self.nrow, self.ncol = nrow, ncol = desc.shape
         self.reward_range = (0, 1)
-        
+        self.agent = "random"
         self.goals = []
+        self.starts = []
+        self.prob_goal = prob
 
+        #choose a random goal
         for i in range(nrow):
             for j in range(ncol):
+                if self.desc[i,j] in b'S':
+                        self.starts.append([i,j])
                 if self.desc[i,j] in b'G':
                     self.goals.append([i,j])
-        
+
+
+        nSt = len(self.starts)
         nG = len(self.goals)
-        if len(self.goals) != len(prob) or np.sum(prob) != 1:
-            self.prob = [1/nG]*nG
+        #check to see if the number othe probabilities of the goals match up to one
+        #or whether the length of the list self.goals == prob
+        if len(self.goals) != len(self.prob_goal) or np.sum(prob) != 1:
+            self.prob_goal = [1/nG]*nG
+
+        #if random choose a random starting point
+        if self.agent == "random":
+            self.prob_starts = [1/nSt]*nSt
+            nSt = len(self.starts)
+            index = randomizer(self.starts, self.prob_starts)
+
+        '''
         else:
-            self.prob = prob
+            allow agent to select on its own
+
+        '''
+
+
+        #replace starting indices and goal indices
+
+        replace_is = list(np.delete(self.starts, index))
+        for i in replace_is:
+            x,y = replace_is[i]
+            self.desc[x,y] = b'F'
+
             
-        index = random_goal(self.goals, self.prob)
+        index = randomizer(self.goals, self.prob_goal)
         replace_is = list(np.delete(self.goals, index))
         for i in replace_is:
             x,y = replace_is[i]
             self.desc[x,y] = b'F'
         
-        
-
+    
         nA = 4
         nS = nrow * ncol
 
@@ -170,6 +197,7 @@ class BasicGameEnv(discrete.DiscreteEnv):
                     if letter in b'G':
                         li.append((1.0, s, 0, True))
                     elif letter in b'B':
+                        #cannot move onto the next block
                         continue
                     else:
                         newrow, newcol = inc(row, col, a)
@@ -199,13 +227,27 @@ class BasicGameEnv(discrete.DiscreteEnv):
                 return outfile.getvalue()
 
     def reset(self):
+        super(BasicGameEnv, self).reset()
         self.desc = self.true_map
-        index = random_goal(self.goals, self.prob)
+        index = randomizer(self.goals, self.prob_goal)
         replace_is = list(np.delete(self.goals, index))
         for i in replace_is:
             x,y = replace_is[i]
             self.desc[x,y] = b'F'
-        super(BasicGameEnv, self).reset()
+
+        if self.agent == "random":
+            self.prob_starts = [1/nSt]*nSt
+            nSt = len(self.starts)
+            index = randomizer(self.starts, self.prob_starts)
+
+        '''
+        else:
+            allow agent to select on its own position
+        '''
+        replace_is = list(np.delete(self.starts, index))
+        for i in replace_is:
+            x,y = replace_is[i]
+            self.desc[x,y] = b'F'
         
         
 

@@ -4,6 +4,6 @@ from gym.envs.registration import register
 # ==========================
 
 register(
-    id='TicTacToe-v1',
+    id='BasicGame-v1',
     entry_point='gym_basicgame.basicgame:BasicGameEnv'
 )
